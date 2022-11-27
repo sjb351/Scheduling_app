@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<button type = "display info" class = "btn btn-primary my-5">
+    Display
+</button>
+
+<ul>
+    <li>test of top list</li>
+    {% for orders in order %}
+        <li>Order {{orders.idNumber}} requests {{orders.quantity}}</li>
+    {% endfor %}
+</ul>
+
+{% endblock %}

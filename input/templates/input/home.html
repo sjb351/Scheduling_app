@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Select an item to input</h1> 
+
+        <ul>
+                <li><a href="{% url 'input.process' %}">Add Process</a></li>
+                <li><a href="{% url 'input.processList' %}">Add Process List</a></li>
+                <li><a href="{% url 'input.product' %}">Add Product</a></li>
+                <li><a href="{% url 'input.order' %}">Add Order</a></li>
+        </ul>
+    
+
+{% endblock %}

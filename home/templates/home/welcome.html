@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Add the date here:  {{todayDate}}</h1> 
+
+        <ul>
+            {% for mqtt in mqtts %}
+                <li>{{mqtt.jobName}}</li>
+                <li>{{mqtt.length}}</li>
+
+            {% endfor %}
+        </ul>
+    
+    </body>
+
+{% endblock %}

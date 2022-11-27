@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1 class = "my-5"> Order added</h1>
+        <ul>
+            {% for j in jobs %}
+                <li>{{j}}</li>
+
+            {% endfor %}
+        </ul>
+
+        <ul> number {{number}} </ul>
+  {% endblock %}
