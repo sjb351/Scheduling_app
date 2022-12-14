@@ -1,5 +1,5 @@
 from .models import order
-from input.models import product, proccessesList, proccess
+from input.models import product, proccessesList, procces
 from django import forms
 
 # class jobForm(forms.ModelForm):

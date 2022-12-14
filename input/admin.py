@@ -14,7 +14,7 @@ class workerAdmin(admin.ModelAdmin):
 class machineAdmin(admin.ModelAdmin):
     pass
 
-admin.site.register(models.proccess, processAdmin)
+admin.site.register(models.procces, processAdmin)
 admin.site.register(models.proccessesList, processListAdmin)
 admin.site.register(models.product, productAdmin)
 admin.site.register(models.worker, workerAdmin)

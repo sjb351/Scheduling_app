@@ -9,5 +9,5 @@ class jobsAdmin(admin.ModelAdmin):
 class orderAdmin(admin.ModelAdmin):
     pass
 
-admin.site.register(models.jobs, jobsAdmin)
+admin.site.register(models.job, jobsAdmin)
 admin.site.register(models.order, orderAdmin)

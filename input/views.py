@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.views.generic import ListView, TemplateView, DetailView, CreateView, UpdateView
-from .models import product, proccessesList, proccess
+from .models import product, proccessesList, procces
 from .forms import processForm, processListForma,productForm
 # Create your views here.
 
@@ -39,7 +39,7 @@ def processListCreateView(request):
     return render(request, "input/processList.html", context)
 
 def processCreateView(request):
-    model = proccess
+    model = procces
     context = {}
     form = processForm(request.POST or None)
     context['form'] = form

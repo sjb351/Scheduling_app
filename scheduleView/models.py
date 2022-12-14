@@ -1,5 +1,5 @@
 from django.db import models
-from input.models import proccess, proccessesList, product, machine, worker
+from input.models import procces, proccessesList, product, machine, worker
 from datetime import datetime, timedelta
 from django.utils import timezone, timesince
 from django.db.models.signals import post_save, post_delete
@@ -13,6 +13,8 @@ class order(models.Model):
     productAdd = models.ForeignKey(product, on_delete=models.CASCADE)
     quantity = models.PositiveBigIntegerField(default=1)
     completedOrder = models.BooleanField(default=False)
+    startedTime = models.DateTimeField(auto_now_add = True)
+    endTime = models.DateTimeField(auto_now_add = True)
 
     def __int__(self):
         return 'Order - ' + str(self.idNumber)
@@ -26,15 +28,16 @@ class order(models.Model):
 #         for jobs in jobNeeded:
 #             print(jobs)
 
-class jobs(models.Model):
-    proccess =  models.ForeignKey(proccess, on_delete=models.CASCADE,null=True, blank =True)
+class job(models.Model):
+    proccess =  models.ForeignKey(procces, on_delete=models.CASCADE,null=True, blank =True)
     order = models.ForeignKey(order, on_delete=models.CASCADE)
     quantity = models.PositiveBigIntegerField()
-
     startTime = models.DateTimeField(default=timezone.now)
     endTime = models.DateTimeField(default=timezone.now)
     actualEnd = models.DateTimeField(default=timezone.now)
     delayTime = models.DurationField(default = d0) 
+    workData = models.JSONField(blank=True)
+    machData  = models.JSONField(blank=True)
 
     startedJob = models.BooleanField(default = False, null=True, blank=True)
     completedJob = models.BooleanField(default = False, null=True, blank=True)

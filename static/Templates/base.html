@@ -5,6 +5,13 @@
 </head>
 
 <body>
+    <div class="topnav">
+        <a class="active" href="{% url 'home.homeViewLink'%}">Home</a>
+        <a href="{% url 'schedule.show.orders'%}">Order view</a>
+        <a href="{% url 'schedule.show.jobs'%}">Jobs view</a>
+        <a href="{% url 'schedule.show.machine'%}">Machine View</a>
+    </div>
+
     <div href = "{% url 'home.homeViewLink'%}"><h1>MES app</h1></div>
     <div class = "my-5 text-center container">
         {% block content %}
