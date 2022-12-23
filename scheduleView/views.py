@@ -10,10 +10,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 from datetime import datetime, timedelta
+import time 
 from plotly.figure_factory import create_gantt
 import json
 from scheduleView.serilizer import DateTimeEncoder
 from datetime import datetime
+from dash import Dash, dcc, html, Input, Output
+from django_plotly_dash import DjangoDash
 
 def DecodeDateTime(empDict):
     if 'start' in empDict:
@@ -198,32 +201,27 @@ def machine_plot_view(request):
     #create initial frame for gantt chart data
     df = pd.DataFrame(gantt_data)
     #cm = {x:x for x in df.Color.unique()}
-    
+    now =datetime.now()
     fig1 =px.timeline(df, x_start="Start", x_end="End Time", y="Name", color="Color",  hover_name = "Resource", labels = "Name", title= "Gantt chart of machines plot", text = "text")
 
-    # other ones to use text = ""  adds text, opacity = ""
-
+    fig1.update_traces(width=0.61)
     fig1.update_xaxes(
         rangeslider_visible=True,
-        rangeselector=dict(),
-            # buttons=list([
-            #     dict(count=1, label="1h", step='hour', stepmode="backward"),
-            #     dict(count=6, label="6h", step='hour', stepmode="backward"),
-            #     dict(count=1, label="1d", step='day', stepmode="backward"),
-            #     dict(count=7, label="1w", step='day', stepmode="backward"),
-            #     dict(step="all")
-            # ])
         rangebreaks=[
-            dict(bounds=["sat", "mon"]), #hide weekends
-            dict(values=["2015-12-25", "2016-01-01"])  # hide Christmas and New Year's
-            ]
-        )
+            #dict(bounds=["sat", "mon"]),  # hide weekends, eg. hide sat to before mon
+            dict(bounds=[18, 24], pattern="hour"),  # hide hours outside of 9.30am-4pm
+            dict(bounds=[2, 9], pattern="hour"),],
+        dtick=3600000,
+        tickformat="%H:%M\n%d-%m-%y",
+        showgrid=True, 
+        ticklabelmode="period"
+    )
     fig1.update_yaxes(autorange="reversed")
-    fig1.update_traces(width=0.61)
     plot_div = plot(fig1, output_type='div')
     #= plot({'data': graphs, 'layout': layout},output_type='div')
     context={'plot_div': plot_div}
     return render(request, 'schedule/schedulePlot.html', context)
+
 
 def worker_plot_view(request):
     # {'seconds': x, 'start': timeFinal[index], 'end': finishTime[index], 'automated': auto, 
@@ -273,6 +271,7 @@ def worker_plot_view(request):
                 data.append(copyDict)
 
     gantt_data = data
+
     #create initial frame for gantt chart data
     df = pd.DataFrame(gantt_data)
     cm = {x:x for x in df.Color.unique()}
@@ -283,3 +282,118 @@ def worker_plot_view(request):
     #= plot({'data': graphs, 'layout': layout},output_type='div')
     context={'plot_div': plot_div}
     return render(request, 'schedule/schedulePlot.html', context)
+
+
+
+app = DjangoDash('SimpleExample')   # replaces dash.Dash
+
+app.layout = html.Div([
+    html.H4('Graph title'),
+    dcc.Graph(id="time-series-chart"),
+    html.P("Select day:"),
+    dcc.Dropdown(
+        id="ticker",
+        options=["Day 1", "Day 2", "Day 3"],
+        value="Day 1",
+        clearable=False,
+    ),
+])
+
+@app.callback(
+    Output("time-series-chart", "figure"), 
+    Input("ticker", "value"))
+
+def display_time_series(ticker):
+    df = worker_plot_view_V2(ticker) # replace with your own data source
+    fig = px.line(df, x='date', y=ticker)
+    return fig
+
+
+def worker_plot_view_V2(ticker):
+    # {'seconds': x, 'start': timeFinal[index], 'end': finishTime[index], 'automated': auto, 
+    #'endSetUp': timeSetUpend[index], 'startPost': timeStartPost[index], 'order': firstOrderPk}
+    num = updateTimesByCreated()
+    daynow = datetime.now()
+    #data automatically set by project
+    dataJobs = job.objects.filter(completedJob = False)
+    data_1 =[]
+    data_2 =[]
+    data_3 =[]
+    data_4 =[]
+    for jobs in dataJobs:
+        if jobs.proccess.automated:
+            newData = json.loads(jobs.workData)
+            data2 = {}
+            for x in newData:
+                res = list(x.keys())[0]
+                data2['Name'] =  res + " starts pre process for " + jobs.proccess.name + " - on " + x[res]['mach']
+                data2['worker'] = res
+                data2['Start'] = datetime.fromisoformat(x[res]['start'])
+                data2['End Time'] = datetime.fromisoformat(x[res]['endSetUp'])
+                data2['Order'] = "Order " + str(x[res]['order'])
+                data2['Color'] = "Order " + str(x[res]['order']) 
+                data2['Resource'] = 1 #newData[x]['quant']
+                copyDict = data2.copy()  # copy to make possible to append
+                data3 = {}
+                data3['Name'] =  res + " starts post process for " + jobs.proccess.name + " - on " + x[res]['mach']
+                data3['worker'] = res
+                data3['Start'] = datetime.fromisoformat(x[res]['startPost'])
+                data3['End Time'] = datetime.fromisoformat(x[res]['end'])
+                data3['Order'] = "Order " + str(x[res]['order'])
+                data3['Color'] = "Order " + str(x[res]['order']) 
+                data3['Resource'] = 1 #newData[x]['quant']
+                copyDict2 = data3.copy()  # copy to make possible to append
+                if data2['Start'].day == daynow.day:
+                    data_1.append(copyDict2)
+                    data_1.append(copyDict)
+                elif data2['Start'] == (daynow + timedelta(1)).day:
+                    data_2.append(copyDict2)
+                    data_2.append(copyDict)
+                elif data2['Start'] == (daynow + timedelta(2)).day:
+                    data_3.append(copyDict2)
+                    data_3.append(copyDict)
+                else:
+                    data_4.append(copyDict2)
+                    data_4.append(copyDict)
+        else:
+            newData = json.loads(jobs.workData)
+            data2 = {}
+            for x in newData:
+                res = list(x.keys())[0]
+                data2['Name'] =  res + " starts " + jobs.proccess.name + " on " + x[res]['mach']
+                data2['worker'] = res
+                data2['Start'] = datetime.fromisoformat(x[res]['start'])
+                data2['End Time'] = datetime.fromisoformat(x[res]['end'])
+                data2['Order'] = "Order " + str(x[res]['order'])
+                data2['Color'] = "Order " + str(x[res]['order']) 
+                data2['Resource'] = 1 #newData[x]['quant']
+                copyDict = data2.copy()  # copy to make possible to append
+                data_1.append(copyDict)
+
+    gantt_data_1 = data_1
+    gantt_data_2 = data_2
+    gantt_data_3 = data_3
+    gantt_data_4 = data_4
+    #create initial frame for gantt chart data
+    df1 = pd.DataFrame(gantt_data_1)
+    df2 = pd.DataFrame(gantt_data_2)
+    df3 = pd.DataFrame(gantt_data_3)
+    df4 = pd.DataFrame(gantt_data_4)
+    dt = df1
+    if ticker == "Day 1":
+        df = df1
+    elif ticker == "Day 2":
+        df = df2
+    elif ticker == "Day 3":
+        df = df3
+    elif ticker == "Day 4":
+        df = df4
+
+    fig1 =px.timeline(df, x_start="Start", x_end="End Time", y="worker", color="Color",  hover_name = "Name", labels = "Name")
+    fig1.update_yaxes(autorange="reversed")
+    fig1.update_traces(width=0.61)
+    plot_div = plot(fig1, output_type='div')
+    #= plot({'data': graphs, 'layout': layout},output_type='div')
+    context={'plot_div': plot_div}
+    
+    return fig1

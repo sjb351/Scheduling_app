@@ -7,6 +7,7 @@ urlpatterns = [
     path('Order', views.order_plot_view, name="schedule.show.orders"),
     path('Jobs', views.jobs_plot_view, name="schedule.show.jobs"),
     path('Machine', views.machine_plot_view, name="schedule.show.machine" ),
+    #path('Machine2', views.machine_plot_view, name="schedule.show.machine2" ),
     path('Worker', views.worker_plot_view, name="schedule.show.worker" ),
     path('new_order', views.orderCreateView.as_view(), name="new-order"),
     path('new', views.orderNew, name="new-order2")

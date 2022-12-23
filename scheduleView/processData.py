@@ -1,6 +1,6 @@
 from scheduleView.models import order, job
 from input.models import product, proccessesList, machine, procces, worker
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from django.utils import timezone
 from django.db.models import Avg, Max, Min
 from itertools import permutations
@@ -46,8 +46,26 @@ def suround_range(start, end, newStart, newEnd):
 def job_clash(start, end, newStart, newEnd):
     return in_range(start, end, newStart, newEnd) or suround_range(start, end, newStart, newEnd)
 
+def checkTimeIsDay(timeStart, jobLength):
+    timeDateStart = timeStart.time()
+    newDateEnd = timeStart + jobLength
+    newEnd = newDateEnd.time()
+    nightClose = time(17, 30, 0)
+    dayOpen = time(9, 0, 0)
+    diff = timedelta(0)
+        #if jobLength < timedelta (6, 0, 0):
+    if timeDateStart > nightClose or newEnd > nightClose:
+        dayNow = timeStart.day
+        newTime = timeStart.replace(day = (dayNow +1), hour = dayOpen.hour, minute = dayOpen.minute, second = dayOpen.second)
+        diff = newTime - timeStart
+    elif  dayOpen >  timeDateStart or dayOpen > newEnd:
+        dayNow = timeStart.day
+        newTime = timeStart.replace(day = dayNow, hour = dayOpen.hour, minute = dayOpen.minute, second = dayOpen.second)
+        diff = newTime - timeStart      
+    newFinal = timeStart + diff
+    return newFinal, diff
 
-def findWorkers(procc, startTime):
+def findWorkers(procc, startTime, jobLength):
     timeArray =[]
     PPT = procc.WorkerpostProcessTime
     SUT = procc.WorkerSetUpTime
@@ -108,11 +126,12 @@ def findWorkers(procc, startTime):
                         end2 =  d[1] + preTime + leng +postTime
             else:
                 timeAviable = startTime 
+            #timeAviabl = checkTimeIsDay(timeAviable, jobLength)
             timeArray.append(timeAviable)
     return list(workerList),  list(timeArray)
 
 
-def findMachines(procc, startTime):
+def findMachines(procc, startTime, jobLength):
     timeArray =[]
     machineList = machine.objects.filter(proccessFor=procc)
     for mach in machineList:
@@ -126,7 +145,8 @@ def findMachines(procc, startTime):
             timeAviable = machFreeTime 
         #addTo = [mach, avaible, timeAviable]
         else:
-            timeAviable = startTime 
+            timeAviable = startTime
+        #timeAviabl = checkTimeIsDay(timeAviable, jobLength)
         timeArray.append(timeAviable)
         #machineChoice.append(addTo)
     return list(machineList),  list(timeArray)
@@ -197,7 +217,6 @@ def findOptimumCombination(mach, timeAviable, quant, jobLeng):
     
     return bestC
     
-
 def checkLength(value):
     if type(value)==list or isinstance(value, np.ndarray):
         l = len(value)
@@ -230,8 +249,8 @@ def updateTimesByCreated():
                     lastJobEnd = startTime
                 #quant = math.ceil(jobListUse[j].quantity/minPossibleMachines(proc))
                 jobLength = proc.duration + proc.WorkerpostProcessTime + proc.WorkerSetUpTime
-                mach, timeAviable = findMachines(proc, lastJobEnd)
-                workLis, timeAviableWork = findWorkers(proc, lastJobEnd)
+                mach, timeAviable = findMachines(proc, lastJobEnd, jobLength)
+                workLis, timeAviableWork = findWorkers(proc, lastJobEnd, jobLength)
                 timeFinal = []
                 #print(timeAviable)
                 #print(timeAviableWork)
@@ -293,7 +312,9 @@ def updateTimesByCreated():
                         data[2] = data[2] + diff
                 else:
                     print("no change")
-
+                # check if time is available 
+                # for i in range(numMach):
+                #     timeAviable[i] = checkTimeIsDay(timeAviable[i], jobLength)
                 timeFinal = [item[2] for item in fullList]
                 machList = [item[1] for item in fullList]
                 workList = [item[0] for item in fullList]
@@ -306,7 +327,9 @@ def updateTimesByCreated():
 
                 inQuant =  math.ceil(jobListUse[j].quantity/numParall)
                 quant =  findOptimumCombination(machList, timeFinal, inQuant, jobLength)
-                finishTime = np.array(timeFinal) + np.array(quant)*jobLength
+                #finishTime = np.array(timeFinal) + np.array(quant)*jobLength
+
+                
 
                 statingTimeAuto =[]
                 timeSetUpend = []
@@ -317,38 +340,41 @@ def updateTimesByCreated():
                 infoList =[]
                 l = checkLength(quant)
 
-                if proc.automated == True:
-                    for ind in range(l):
+                if proc.automated == True: 
+                    for ind in range(l):  # for machine in list of machines and workers
                         if l == 1:
                             q = quant
                         else:
                             q = quant[ind]
+                        diff = timedelta(0)
                         for i in range(q):
-                            #copyDict = data2.copy() 
-                            #data.append(copyDict)                 
+                            newStartingIn = timeFinal[ind] + i*jobLength + diff
+                            newStarting, diff = checkTimeIsDay(newStartingIn, jobLength)
                             longMachList.append(machList[ind])
                             longWorkList.append(workList[ind])
                             infoList.append(str(machList[ind].name) + " "+ str(l) + " and job number" +str(i))
-                            statingTimeAuto.append(timeFinal[ind] + i*jobLength)
-                            timeSetUpend.append(timeFinal[ind] + i*jobLength + proc.WorkerSetUpTime)
-                            timeStartPost.append(timeFinal[ind] + i*jobLength + jobLength - proc.WorkerpostProcessTime)
-                            endTimeAuto.append(timeFinal[ind] + i*jobLength + jobLength)
-
+                            statingTimeAuto.append(newStarting)
+                            endTimeAuto.append(newStarting + jobLength)
+                            timeSetUpend.append(newStarting + proc.WorkerSetUpTime)
+                            timeStartPost.append(newStarting + jobLength - proc.WorkerpostProcessTime)
                 else:        # not automated no need for time set up and post processing these are set to end and start times
                     for ind in range(l):
                         if l == 1:
                             q = quant
                         else:
                             q = quant[ind]
+                        diff = timedelta(0)
                         for i in range(q):
+                            newStartingIn = timeFinal[ind] + i*jobLength
+                            newStarting, diff = checkTimeIsDay(newStartingIn, jobLength)
                             longMachList.append(machList[ind])
                             longWorkList.append(workList[ind])
-                            infoList.append(str(machList[ind].name) +" "+ str(l) + " and job number" +str(i))
-                            statingTimeAuto.append(timeFinal[ind] + i*jobLength)
-                            timeSetUpend.append(timeFinal[ind] + i*jobLength + jobLength)
-                            timeStartPost.append(timeFinal[ind] + i*jobLength)
-                            endTimeAuto.append(timeFinal[ind] + i*jobLength + jobLength)
-
+                            infoList.append(str(machList[ind].name) + " "+ str(l) + " and job number " + str(i))
+                            statingTimeAuto.append(newStarting)
+                            endTimeAuto.append(newStarting + jobLength)
+                            timeSetUpend.append(newStarting + jobLength)
+                            timeStartPost.append(newStarting)
+                
                 if len(list(timeFinal)) > 1:
                     jobstart = min(statingTimeAuto)
                     jobend = max(endTimeAuto)
